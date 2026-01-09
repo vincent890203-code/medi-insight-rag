@@ -1,0 +1,13 @@
+langchain
+langchain-google-genai
+langchain-community
+langchain-huggingface    # 新增：用來做本地 Embedding
+langchain-chroma
+sentence-transformers    # 新增：HuggingFace 的底層依賴
+chromadb
+fastapi
+uvicorn
+python-dotenv
+pypdf
+tiktoken
+numpy
