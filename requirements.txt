@@ -1,12 +1,20 @@
+# 核心框架
 langchain
-langchain-google-genai
 langchain-community
-langchain-huggingface    # 新增：用來做本地 Embedding
+langchain-core
+
+# 向量資料庫與模型
 langchain-chroma
-sentence-transformers    # 新增：HuggingFace 的底層依賴
 chromadb
+langchain-google-genai
+langchain-huggingface
+sentence-transformers
+
+# 網頁服務 (Day 3 會用到)
 fastapi
 uvicorn
+
+# 工具類
 python-dotenv
 pypdf
 tiktoken
