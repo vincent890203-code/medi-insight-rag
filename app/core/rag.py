@@ -17,11 +17,23 @@ def initialize_rag_system():
     # 2. 準備 Embeddings (全域變數)
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
-    # 3. 準備向量資料庫 (這裡先用你的範例，未來可以改成讀取本地 index)
-    # 如果本地已經有存好的 index，可以改用 FAISS.load_local(...)
-    # 目前為了確保能跑，我們先維持你的範例資料
-    docs = [Document(page_content="病人張三，EGFR L858R 突變陽性，建議使用 Osimertinib。")]
-    vector_store = FAISS.from_documents(docs, embeddings)
+  # 3. 載入向量資料庫 (關鍵修改！)
+    DB_PATH = "faiss_index" # 資料庫路徑
+    
+    if os.path.exists(DB_PATH):
+        print(f"📂 發現本地資料庫，正在載入: {DB_PATH}")
+        # allow_dangerous_deserialization=True 是必須的
+        # 因為 FAISS 讀取 pickle 檔有安全風險，但這是我們自己生成的檔，所以安全
+        vector_store = FAISS.load_local(
+            DB_PATH, 
+            embeddings, 
+            allow_dangerous_deserialization=True
+        )
+    else:
+        print("⚠️ 警告：找不到 faiss_index 資料夾！")
+        print("💡 請先執行 'python app/core/ingest.py' 來消化 PDF。")
+        # 萬一真的沒檔案，給個空殼避免程式崩潰
+        return None
 
     # 4. 建立檢索器 (Retriever)
     retriever = vector_store.as_retriever()

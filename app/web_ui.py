@@ -45,16 +45,33 @@ if prompt := st.chat_input("請輸入關於病人的問題... (例如：張三�
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 呼叫 AI
+    # B. 呼叫 AI
     with st.chat_message("assistant"):
-        with st.spinner("AI 正在思考中..."):
+        with st.spinner("AI 正在翻閱病歷..."):
             try:
-                # 這裡就是呼叫我們快取好的 rag_chain
+                # invoke 的時候，rag_chain 會回傳 answer 和 context
                 response = rag_chain.invoke({"input": prompt})
                 answer = response["answer"]
+                
+                # 1. 顯示回答
                 st.markdown(answer)
                 
-                # 記錄 AI 回答
+                # 2. 顯示來源證據 (加分題！)
+                # 從 response["context"] 裡抓出它看了哪些文件
+                context_docs = response["context"]
+                
+                # 用一個漂亮的折疊區塊顯示來源
+                with st.expander("🔍 點擊查看 AI 參考的病歷片段"):
+                    for i, doc in enumerate(context_docs):
+                        source_page = doc.metadata.get("page", "未知") + 1 # 頁碼通常從 0 開始，所以 +1
+                        source_file = os.path.basename(doc.metadata.get("source", "未知檔案"))
+                        
+                        st.markdown(f"**📄 來源 {i+1} (第 {source_page} 頁 - {source_file}):**")
+                        st.caption(doc.page_content[:200] + "...") # 只顯示前 200 字預覽
+                        st.divider()
+
+                # 記錄 AI 的話到歷史訊息
                 st.session_state.messages.append({"role": "assistant", "content": answer})
+
             except Exception as e:
-                st.error(f"❌ 生成回答時發生錯誤：{str(e)}")
+                st.error(f"❌ 發生錯誤：{str(e)}")
