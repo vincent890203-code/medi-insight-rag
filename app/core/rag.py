@@ -75,10 +75,29 @@ def start_terminal_chat():
                 break
         
             res = rag_chain.invoke({"input": user_input})
+            
+            # 1. 印出回答
             print(f"\n📝 AI 診斷：{res['answer']}")
+
+            # 2. 🔥【新增】印出參考來源 (關鍵修改)
+            print("\n📚 參考文獻 (Evidence):")
+            # res['context'] 裡面就是所有被檢索到的文件塊
+            if "context" in res and res["context"]:
+                for i, doc in enumerate(res["context"]):
+                    # 抓取檔名和頁數 (metadata 是 ingest.py 寫進去的)
+                    source = doc.metadata.get("source", "未知來源")
+                    page = doc.metadata.get("page", "未知頁碼")
+                    
+                    # 為了版面乾淨，只顯示前 50 個字
+                    content_preview = doc.page_content[:50].replace("\n", " ")
+                    
+                    print(f"   [{i+1}] 📄 {source} (Page {page})")
+                    print(f"       摘要: {content_preview}...")
+            else:
+                print("   (無參考文件，AI 依據自身知識回答)")
+
         except Exception as e:
             print(f"❌ 發生錯誤: {e}")
-
 
 # --- 程式進入點保護 ---
 # 只有直接執行這個檔案時，才會跑終端機對話

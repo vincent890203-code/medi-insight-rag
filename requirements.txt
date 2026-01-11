@@ -1,21 +1,19 @@
-# 核心框架
-langchain
-langchain-community
-langchain-core
+# --- RAG 核心 (強制鎖定版本，避免 pip 裝到舊版) ---
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-core>=0.3.0
+langchain-text-splitters>=0.3.0
 
-# 向量資料庫與模型
-langchain-chroma
-chromadb
+# --- 模型與向量庫 ---
 langchain-google-genai
 langchain-huggingface
 sentence-transformers
+faiss-cpu
+pypdf
 
-# 網頁服務 (Day 3 會用到)
+# --- API 服務 ---
 fastapi
 uvicorn
-
-# 工具類
+python-multipart
 python-dotenv
-pypdf
-tiktoken
-numpy
+streamlit
