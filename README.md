@@ -1,8 +1,40 @@
 # 🩺 Medi-Insight: RAG-Based Medical Assistant
 
-![Version](https://img.shields.io/badge/version-2.3-blue.svg) ![Python](https://img.shields.io/badge/Python-3.11-green.svg) ![Docker](https://img.shields.io/badge/Docker-Containerized-blue.svg)
+[![CI - Docker Build](https://github.com/vincent890203-code/medi-insight-rag/actions/workflows/docker-build.yml/badge.svg)](https://github.com/vincent890203-code/medi-insight-rag/actions/workflows/docker-build.yml)
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green)
+![Docker](https://img.shields.io/badge/Docker-Enabled-blue)
 
 **Medi-Insight** 是一個專為精準醫療設計的智慧病歷問答系統。它利用 **RAG (Retrieval-Augmented Generation)** 技術，解決了大型語言模型在醫療領域常見的「幻覺 (Hallucination)」問題，實現了**「有憑有據」**的臨床輔助決策。
+
+## Project Structure
+```bash
+medi-insight-rag/
+├── 📂 app/                      # 核心應用程式邏輯
+│   ├── 📂 core/
+│   │   ├── ingest.py            # [ETL] PDF 解析與向量化流程 (Document Loader)
+│   │   └── rag.py               # [Logic] RAG 檢索增強生成核心 (Chain Definition)
+│   └── __init__.py
+│
+├── 📂 data/                     # 原始資料庫 (Knowledge Base)
+│   └── patient_report_*.pdf     # 去識別化的模擬病歷 PDF
+│
+├── 📂 faiss_index/              # 向量資料庫 (Vector DB)
+│   ├── index.faiss              # FAISS 索引檔 (儲存向量)
+│   └── index.pkl                # Metadata 序列化檔案
+│
+├── 📂 tests/                    # 測試與驗證工具 (Dev Tools)
+│   ├── check_models.py          # 模型連線檢查腳本 (Model Health Check)
+│   ├── debug_langchain.py       # LangChain 流程除錯工具
+│   └── create_pdf.py            # 合成資料生成器 (Synthetic Data Gen)
+│
+├── 📜 main.py                   # [Backend] FastAPI 應用程式入口點
+├── 📜 web_ui.py                 # [Frontend] Streamlit 使用者介面
+├── 🐳 Dockerfile                # 容器化建置設定檔
+├── 📜 requirements.txt          # Python 依賴套件清單 (Pinned Versions)
+├── 📜 start.sh                  # 服務啟動腳本 (Orchestrator)
+└── ⚙️ .env                       # 環境變數與 API Keys (GitIgnored)
+```
 
 ## 🚀 Key Features (核心功能)
 
@@ -33,16 +65,33 @@ graph LR
     BE -->|完整回應| FE
 ```
 
-## 💻 Installation
+## 🚀 Quick Start (快速啟動)
 
+### Prerequisites
+* Docker & Docker Compose installed
+* Google API Key (configured in `.env`)
+
+### 1. Clone & Setup
 ```bash
-# 1. 建置 Docker 映像檔
-docker build -t medi-final .
-
-# 2. 啟動服務 (同時開啟 API 與 前端)
-docker run --name medi-demo -d -p 8000:8000 -p 8501:8501 -v ${PWD}:/app medi-final
-
-# 3. 進入容器啟動服務
-docker exec -d medi-demo uvicorn main:app --host 0.0.0.0 --port 8000
-docker exec -it medi-demo streamlit run app.py
+git clone [https://github.com/vincent890203-code/medi-insight-rag.git](https://github.com/vincent890203-code/medi-insight-rag.git)
+cd medi-insight-rag
 ```
+
+## Configure Environment
+建立 .env 檔案並填入金鑰：
+```bash
+echo "GOOGLE_API_KEY=your_api_key_here" > .env
+```
+
+## Run with Docker
+直接使用 Docker Compose 一鍵啟動後端 API 與前端介面：
+```bash
+docker build -t medi-insight-rag .
+docker run -p 8000:8000 -p 8501:8501 --env-file .env medi-insight-rag
+```
+啟動後請訪問：
+
+Web UI: http://localhost:8501
+
+API Docs: http://localhost:8000/docs
+
