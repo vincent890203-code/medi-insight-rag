@@ -1,60 +1,104 @@
-# main.py - 這是後端 API (修正來源讀取邏輯)
+import os
+import sys
+import re
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-# 引入路徑維持不變
-from app.core.rag import initialize_rag_system 
+
+# 強制修正路徑
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from app.core.rag import get_rag_chain
+except ImportError as e:
+    print(f"❌ Import Error: {e}")
+    sys.exit(1)
 
 app = FastAPI(title="Medi-Insight RAG API")
 
-# 全域變數
-rag_chain = None
-
 class QueryRequest(BaseModel):
     query: str
+    file_name: str = None
+
+# --- ✨ 升級版：關鍵句萃取與高亮 (Key Sentence Extraction) ---
+def extract_key_context(text: str, query: str) -> str:
+    """
+    只回傳包含關鍵字的句子，並加上高亮。
+    如果完全沒對到關鍵字(純語意相關)，則回傳前 200 字作為摘要。
+    """
+    # 1. 取得關鍵字 (忽略太短的字)
+    keywords = [kw for kw in query.split() if len(kw) > 1]
+    
+    # 2. 簡單斷句 (針對英文句點、問號或換行切分)
+    # 這裡的邏輯是：遇到 . ? ! 或 換行 就切開
+    sentences = re.split(r'(?<=[.!?])\s+|\n', text)
+    
+    # 清理空白
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    selected_sentences = []
+    found_match = False
+
+    for sent in sentences:
+        # 檢查這句話有沒有包含任何一個關鍵字 (Case Insensitive)
+        if any(k.lower() in sent.lower() for k in keywords):
+            found_match = True
+            
+            # 進行高亮處理
+            highlighted_sent = sent
+            for kw in keywords:
+                pattern = re.compile(re.escape(kw), re.IGNORECASE)
+                highlighted_sent = pattern.sub(lambda m: f"**{m.group(0)}**", highlighted_sent)
+            
+            selected_sentences.append(highlighted_sent)
+
+    # 3. 組合結果
+    if found_match:
+        # 如果有找到關鍵句，用 " ... " 連接，讓閱讀感像摘要
+        return " ... ".join(selected_sentences)
+    else:
+        # --- 防呆機制 ---
+        # 如果 RAG 找到了段落(因為語意相似)，但沒有精確關鍵字
+        # 我們回傳前 2 句就好，不要整坨丟出來
+        fallback = " ".join(sentences[:2])
+        return f"{fallback} ..."
 
 @app.on_event("startup")
 async def startup_event():
-    global rag_chain
-    print("正在初始化 RAG 系統...")
-    rag_chain = initialize_rag_system()
-    if rag_chain:
-        print("✅ RAG 系統初始化完成！")
-    else:
-        print("⚠️ RAG 系統初始化失敗")
+    print("🚀 API 啟動中，正在預載入 RAG 模型...")
+    get_rag_chain() 
 
 @app.post("/chat")
 async def chat_endpoint(request: QueryRequest):
-    global rag_chain
-    if not rag_chain:
-        raise HTTPException(status_code=503, detail="RAG system not ready")
-    
     try:
-        # 1. 取得回應
-        print(f"收到問題: {request.query}") # Debug log
+        print(f"📩 收到提問: {request.query}")
+
+        target_source = None
+        if request.file_name:
+            target_source = os.path.join("data", request.file_name)
+            target_source = target_source.replace("\\", "/")
+
+        rag_chain = get_rag_chain(selected_source=target_source)
+        
+        if not rag_chain:
+            raise HTTPException(status_code=503, detail="RAG init failed.")
+
         response = rag_chain.invoke({"input": request.query})
         
-        # Debug: 印出 keys 看看 RAG 到底回傳了什麼
-        print(f"RAG 回傳 Keys: {response.keys()}")
-
-        # 2. 🔥【關鍵修正】萬能轉接頭 (Universal Adapter)
-        # 不管是 context (新版) 還是 source_documents (舊版)，通通抓起來
-        source_docs = []
-        if "context" in response:
-            source_docs = response["context"]
-        elif "source_documents" in response:
-            source_docs = response["source_documents"]
-            
-        # 3. 整理來源資料
         sources_list = []
-        for doc in source_docs:
-            sources_list.append({
-                "source": doc.metadata.get("source", "未知來源"),
-                "page": doc.metadata.get("page", "未知頁碼"),
-                # 🔥【修正點】改回 "content"，確保前端 app.py 看得懂！
-                "content": doc.page_content[:150].replace("\n", " ") + "..." 
-            })
+        if "context" in response:
+            for doc in response["context"]:
+                # 取得原始文字
+                raw_content = doc.page_content
+                
+                # --- 關鍵修改：呼叫新的萃取邏輯 ---
+                # 我們不再無腦 replace \n，因為 \n 在病歷中通常代表一個新的項目
+                refined_content = extract_key_context(raw_content, request.query)
 
-        print(f"找到 {len(sources_list)} 個參考來源") # Debug log
+                sources_list.append({
+                    "source": os.path.basename(doc.metadata.get("source", "Unknown")),
+                    "page": doc.metadata.get("page", 0) + 1,
+                    "content": refined_content 
+                })
 
         return {
             "answer": response["answer"],
@@ -62,5 +106,9 @@ async def chat_endpoint(request: QueryRequest):
         }
 
     except Exception as e:
-        print(f"❌ 錯誤: {str(e)}")
-        return {"answer": f"處理發生錯誤: {str(e)}", "sources": []}
+        print(f"❌ 處理錯誤: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

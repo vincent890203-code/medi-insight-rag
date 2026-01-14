@@ -1,11 +1,14 @@
-# 1. 啟動後端 (在背景執行，不佔用畫面)
-echo "🚀 正在啟動後端 (Uvicorn)..."
-nohup uvicorn main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
+#!/bin/bash
 
-# 2. 等待 5 秒讓後端熱機
-echo "⏳ 等待 API 就緒..."
-sleep 5
+# 1. 啟動後端 (關鍵修改：拿掉 nohup 和 log redirection，讓 Log 直接吐到螢幕)
+# 這樣你在 docker run 的視窗就能看到 "Application startup complete"
+echo "🚀 Starting Backend (FastAPI)..."
+uvicorn main:app --host 0.0.0.0 --port 8000 &
 
-# 3. 啟動前端 (這會佔用目前的視窗)
-echo "✨ 正在啟動前端 (Streamlit)..."
-streamlit run app.py
+# 2. 等待機制 (稍微加長一點，確保 Transformer 模型載入完畢)
+echo "⏳ Waiting for RAG Model to load (10s)..."
+sleep 10
+
+# 3. 啟動前端 (這是主程序，不能背景執行)
+echo "✨ Starting Frontend (Streamlit)..."
+streamlit run web_ui.py --server.port 8501 --server.address 0.0.0.0

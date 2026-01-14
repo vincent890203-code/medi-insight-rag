@@ -2,22 +2,38 @@
 __pycache__/
 *.py[cod]
 *.so
+.DS_Store
+Thumbs.db
 
-# 2. 虛擬環境 (這是最肥大的資料夾，絕對不傳)
+# 2. 虛擬環境
 venv/
 .venv/
 env/
+myenv/
 
-# 3. 環境變數與金鑰 (⚠️ 絕對機密，傳了會有資安風險)
+# 3. 環境變數與金鑰 (⚠️ 絕對機密)
 .env
+.env.*
 
-# 4. 資料庫檔案 (本機生成的索引，不需要上傳)
-chroma_db/
+# 4. 資料庫檔案 (本機生成的索引)
 faiss_index/
+chroma_db/
 
-# 5. 資料夾 (PDF 屬於隱私資料，建議不要傳上去，除非是公開範例)
+# 5. 資料夾 (PDF 與 本地測試資料)
 data/
+docs/
 
-# 6. IDE 設定檔 (VS Code 的個人設定)
+# 6. IDE 設定檔
 .vscode/
 *.code-workspace
+.idea/
+
+# 7. Log 檔案
+*.log
+uvicorn.log
+npm-debug.log*
+
+# 8. 測試相關
+.pytest_cache/
+.coverage
+htmlcov/

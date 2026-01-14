@@ -1,0 +1,42 @@
+name: CI - RAG System Build
+
+# 觸發時機：當 push 到 main 分支，或發起 Pull Request 時
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+# 設定權限 (標準設定)
+permissions:
+  contents: read
+
+jobs:
+  build-docker-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 下載你的程式碼到虛擬機
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 設定 Docker Buildx (這是 Docker 官方推薦的構建工具)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 執行 Docker Build
+      # 這步會測試：
+      #   a. 你的 Dockerfile 語法是否正確
+      #   b. 你的 requirements.txt 是否能成功安裝所有套件
+      # 注意：這裡我們設定 push: false，因為你的目標是「成功 build 出來就好」，不需要推送到 Docker Hub
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false 
+          tags: medi-insight-rag:latest
+          # 如果你的 build 過程需要用到 API Key (例如某些套件安裝時需要驗證)，才需要取消下面的註解
+          # secrets:
+          #   GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
